@@ -164,13 +164,6 @@ farmBtn.Font = Enum.Font.Gotham
 farmBtn.TextSize = 14
 farmBtn.MouseButton1Click:Connect(toggleAutoFarm)
 
--- Toggle com tecla Home
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.Home then
-        mainFrame.Visible = not mainFrame.Visible
-    end
-end)
-
 -- Drag para mover
 local dragging, dragInput, mousePos, framePos = false, nil, nil, nil
 topBar.InputBegan:Connect(function(input)
