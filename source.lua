@@ -1,169 +1,123 @@
+-- 🦁 Huzzy Hub - Mastery Farm para Leopard (Terceiro Mar)
+-- Requer: Fruta Leopard equipada e habilidades desbloqueadas
+
 local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local VirtualInput = game:GetService("VirtualInputManager")
+local Workspace = game:GetService("Workspace")
+local Player = Players.LocalPlayer
 
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+-- Interface
+local ScreenGui = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
+ScreenGui.Name = "LeopardFarmUI"
+ScreenGui.ResetOnSpawn = false
 
--- Configuração do farm
-local Config = {
-    AutoFarm = false,
-    FlyHeight = 6,
-    ClickInterval = 0.1,
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 320, 0, 230)
+Frame.Position = UDim2.new(0, 20, 0.5, -115)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+Frame.BorderSizePixel = 0
+local corner = Instance.new("UICorner", Frame)
+corner.CornerRadius = UDim.new(0, 10)
+
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "🦁 Huzzy - Farm de Maestria (Leopard)"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 15
+Title.BackgroundTransparency = 1
+
+-- Status
+local Status = Instance.new("TextLabel", Frame)
+Status.Position = UDim2.new(0, 0, 0, 35)
+Status.Size = UDim2.new(1, 0, 0, 20)
+Status.Text = "Status: ⛔ Desligado"
+Status.TextColor3 = Color3.new(1, 0.4, 0.4)
+Status.Font = Enum.Font.Gotham
+Status.TextSize = 14
+Status.BackgroundTransparency = 1
+
+-- Checkboxes para habilidades
+local skillUse = {
+    Z = true,
+    X = false,
+    C = false,
+    V = false
 }
 
--- Efeito de fundo (blur)
-local blur = Instance.new("BlurEffect", Lighting)
-blur.Size = 10
-
--- GUI principal
-local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
-gui.Name = "LeopardFarmPanel"
-gui.ResetOnSpawn = false
-
--- Painel principal
-local panel = Instance.new("Frame", gui)
-panel.Size = UDim2.new(0, 420, 0, 160)
-panel.Position = UDim2.new(0.5, -210, 0.5, -80)
-panel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-panel.BackgroundTransparency = 0.2
-panel.AnchorPoint = Vector2.new(0.5, 0.5)
-
-local panelCorner = Instance.new("UICorner", panel)
-panelCorner.CornerRadius = UDim.new(0, 20)
-
-local stroke = Instance.new("UIStroke", panel)
-stroke.Color = Color3.fromRGB(90, 90, 90)
-stroke.Thickness = 1.8
-
--- Título
-local title = Instance.new("TextLabel", panel)
-title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
-title.Text = "🐆 Huzzy Hub | Maestria Leopard"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.FredokaOne
-title.TextSize = 20
-title.TextStrokeTransparency = 0.7
-
--- Status Dinâmico
-local statusInfo = Instance.new("TextLabel", panel)
-statusInfo.Position = UDim2.new(0, 20, 0, 50)
-statusInfo.Size = UDim2.new(1, -40, 0, 25)
-statusInfo.BackgroundTransparency = 1
-statusInfo.Font = Enum.Font.Gotham
-statusInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
-statusInfo.TextSize = 14
-statusInfo.Text = "Status: OFF | Alvo: N/A | Tempo ativo: 0s"
-
--- Botão visual toggle
-local toggleFrame = Instance.new("Frame", panel)
-toggleFrame.Position = UDim2.new(0, 20, 0, 90)
-toggleFrame.Size = UDim2.new(0, 60, 0, 30)
-toggleFrame.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-local tfCorner = Instance.new("UICorner", toggleFrame)
-tfCorner.CornerRadius = UDim.new(0, 15)
-
-local toggleBtn = Instance.new("Frame", toggleFrame)
-toggleBtn.Position = UDim2.new(0, 2, 0, 2)
-toggleBtn.Size = UDim2.new(0, 26, 0, 26)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-local tbCorner = Instance.new("UICorner", toggleBtn)
-tbCorner.CornerRadius = UDim.new(0, 13)
-
-toggleBtn.Parent = toggleFrame
-
--- Botão clicável invisível
-local toggleClick = Instance.new("TextButton", panel)
-toggleClick.Size = toggleFrame.Size
-toggleClick.Position = toggleFrame.Position
-toggleClick.BackgroundTransparency = 1
-toggleClick.Text = ""
-
--- Texto do botão
-local toggleLabel = Instance.new("TextLabel", panel)
-toggleLabel.Position = UDim2.new(0, 90, 0, 90)
-toggleLabel.Size = UDim2.new(0, 200, 0, 30)
-toggleLabel.BackgroundTransparency = 1
-toggleLabel.Text = "Ativar Farm"
-toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleLabel.Font = Enum.Font.GothamBold
-toggleLabel.TextSize = 16
-toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Variáveis
-local farmAtivo = false
-local tempoAtivo = 0
-
--- Funções visuais
-local function atualizarPainel()
-    statusInfo.Text = string.format("Status: %s | Alvo: %s | Tempo ativo: %ds",
-        farmAtivo and "ON" or "OFF",
-        Config.CurrentTarget or "N/A",
-        tempoAtivo
-    )
+local function createCheckbox(parent, key, yPos)
+    local box = Instance.new("TextButton", parent)
+    box.Size = UDim2.new(0, 150, 0, 25)
+    box.Position = UDim2.new(0, 10, 0, yPos)
+    box.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    box.Text = "[✅] Usar " .. key
+    box.TextColor3 = Color3.new(1, 1, 1)
+    box.Font = Enum.Font.Gotham
+    box.TextSize = 13
+    box.MouseButton1Click:Connect(function()
+        skillUse[key] = not skillUse[key]
+        box.Text = skillUse[key] and "[✅] Usar " .. key or "[❌] Usar " .. key
+    end)
 end
 
-local function toggleVisual(on)
-    local newPos = on and UDim2.new(0, 32, 0, 2) or UDim2.new(0, 2, 0, 2)
-    local newColor = on and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
-    TweenService:Create(toggleBtn, TweenInfo.new(0.25), { Position = newPos, BackgroundColor3 = newColor }):Play()
-    toggleLabel.Text = on and "Desativar Farm" or "Ativar Farm"
-    atualizarPainel()
-end
+createCheckbox(Frame, "Z", 65)
+createCheckbox(Frame, "X", 95)
+createCheckbox(Frame, "C", 125)
+createCheckbox(Frame, "V", 155)
 
--- Lógica de farm
-local function equiparFruta()
-    local fruit = LocalPlayer.Backpack:FindFirstChild("Leopard Fruit")
-    if fruit then
-        LocalPlayer.Character.Humanoid:EquipTool(fruit)
+-- Botão de ativar
+local toggle = false
+local ToggleBtn = Instance.new("TextButton", Frame)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 190)
+ToggleBtn.Size = UDim2.new(0, 300, 0, 30)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 60)
+ToggleBtn.Text = "▶️ Iniciar Farm"
+ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextSize = 14
+
+-- Função de ataque
+local function usarSkills()
+    for key, usar in pairs(skillUse) do
+        if usar then
+            VirtualInput:SendKeyEvent(true, key, false, game)
+            wait(0.1)
+            VirtualInput:SendKeyEvent(false, key, false, game)
+            wait(1)
+        end
     end
 end
 
-local function usarFruta()
-    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-    if tool then tool:Activate() end
-end
-
-local function voarSobreInimigo(inimigo)
-    if not inimigo or not inimigo:FindFirstChild("HumanoidRootPart") then return end
-    local bp = Instance.new("BodyPosition", HumanoidRootPart)
-    bp.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    bp.P = 1e4
-    bp.D = 100
-    bp.Position = inimigo.HumanoidRootPart.Position + Vector3.new(0, Config.FlyHeight, 0)
-    delay(1.5, function() bp:Destroy() end)
-end
-
--- Loop
-spawn(function()
-    while true do
-        wait(1)
-        if farmAtivo then
-            tempoAtivo += 1
-            local inimigos = workspace:FindFirstChild("Enemies") and workspace.Enemies:GetChildren() or {}
-            if #inimigos > 0 then
-                local alvo = inimigos[1]
-                Config.CurrentTarget = alvo.Name
-                equiparFruta()
-                voarSobreInimigo(alvo)
-                usarFruta()
-            else
-                Config.CurrentTarget = "N/A"
+-- Função de farm
+local function iniciarFarm()
+    while toggle do
+        local enemies = Workspace.Enemies:GetChildren()
+        for _, npc in pairs(enemies) do
+            if npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
+                pcall(function()
+                    -- Move para cima do inimigo
+                    Player.Character.HumanoidRootPart.CFrame = npc.HumanoidRootPart.CFrame + Vector3.new(0, 20, 0)
+                    usarSkills()
+                end)
+                wait(0.5)
             end
         end
-        atualizarPainel()
+        wait(1)
+    end
+end
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    toggle = not toggle
+    if toggle then
+        Status.Text = "Status: ✅ Ativado"
+        Status.TextColor3 = Color3.fromRGB(0, 255, 0)
+        ToggleBtn.Text = "⛔ Parar Farm"
+        iniciarFarm()
+    else
+        Status.Text = "Status: ⛔ Desligado"
+        Status.TextColor3 = Color3.fromRGB(255, 100, 100)
+        ToggleBtn.Text = "▶️ Iniciar Farm"
     end
 end)
-
--- Clique no botão
-toggleClick.MouseButton1Click:Connect(function()
-    farmAtivo = not farmAtivo
-    toggleVisual(farmAtivo)
-    if not farmAtivo then tempoAtivo = 0 end
-end)
-
--- Inicialização
-toggleVisual(false)
